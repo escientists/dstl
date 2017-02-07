@@ -20,7 +20,7 @@ import shapely.affinity
 from collections import defaultdict
 
 N_Cls = 10
-inDir = '/home/n01z3/dataset/dstl'
+inDir = '/data/dataset'
 DF = pd.read_csv(inDir + '/train_wkt_v4.csv')
 GS = pd.read_csv(inDir + '/grid_sizes.csv', names=['ImageId', 'Xmax', 'Ymin'], skiprows=1)
 SB = pd.read_csv(os.path.join(inDir, 'sample_submission.csv'))
@@ -171,8 +171,8 @@ def stick_all_train():
 
     print np.amax(y), np.amin(y)
 
-    np.save('data/x_trn_%d' % N_Cls, x)
-    np.save('data/y_trn_%d' % N_Cls, y)
+    np.save('/data/dataset/x_trn_%d' % N_Cls, x)
+    np.save('/data/dataset/y_trn_%d' % N_Cls, y)
 
 
 def get_patches(img, msk, amt=10000, aug=True):
@@ -214,8 +214,8 @@ def make_val():
     msk = np.load('data/y_trn_%d.npy' % N_Cls)
     x, y = get_patches(img, msk, amt=3000)
 
-    np.save('data/x_tmp_%d' % N_Cls, x)
-    np.save('data/y_tmp_%d' % N_Cls, y)
+    np.save('/data/dataset/x_tmp_%d' % N_Cls, x)
+    np.save('/data/dataset/y_tmp_%d' % N_Cls, y)
 
 
 def get_unet():
@@ -263,8 +263,8 @@ def get_unet():
 
 
 def calc_jacc(model):
-    img = np.load('data/x_tmp_%d.npy' % N_Cls)
-    msk = np.load('data/y_tmp_%d.npy' % N_Cls)
+    img = np.load('/data/dataset/x_tmp_%d.npy' % N_Cls)
+    msk = np.load('/data/dataset/y_tmp_%d.npy' % N_Cls)
 
     prd = model.predict(img, batch_size=4)
     print prd.shape, msk.shape
@@ -363,15 +363,15 @@ def get_scalers(im_size, x_max, y_min):
 
 def train_net():
     print "start train net"
-    x_val, y_val = np.load('data/x_tmp_%d.npy' % N_Cls), np.load('data/y_tmp_%d.npy' % N_Cls)
-    img = np.load('data/x_trn_%d.npy' % N_Cls)
-    msk = np.load('data/y_trn_%d.npy' % N_Cls)
+    x_val, y_val = np.load('/data/dataset/x_tmp_%d.npy' % N_Cls), np.load('/data/dataset/y_tmp_%d.npy' % N_Cls)
+    img = np.load('/data/dataset/x_trn_%d.npy' % N_Cls)
+    msk = np.load('/data/dataset/y_trn_%d.npy' % N_Cls)
 
     x_trn, y_trn = get_patches(img, msk)
 
     model = get_unet()
-    model.load_weights('weights/unet_10_jk0.7878')
-    model_checkpoint = ModelCheckpoint('weights/unet_tmp.hdf5', monitor='loss', save_best_only=True)
+    model.load_weights('/data/dataset/weights/unet_10_jk0.7878')
+    model_checkpoint = ModelCheckpoint('/data/dataset/weights/unet_tmp.hdf5', monitor='loss', save_best_only=True)
     for i in range(1):
         model.fit(x_trn, y_trn, batch_size=64, nb_epoch=1, verbose=1, shuffle=True,
                   callbacks=[model_checkpoint], validation_data=(x_val, y_val))
@@ -380,7 +380,7 @@ def train_net():
         x_trn, y_trn = get_patches(img, msk)
         score, trs = calc_jacc(model)
         print 'val jk', score
-        model.save_weights('weights/unet_10_jk%.4f' % score)
+        model.save_weights('/data/dataset/weights/unet_10_jk%.4f' % score)
 
     return model
 
@@ -426,7 +426,7 @@ def make_submit():
         id = row[0]
         kls = row[1] - 1
 
-        msk = np.load('msk/10_%s.npy' % id)[kls]
+        msk = np.load('/data/dataset/msk/10_%s.npy' % id)[kls]
         pred_polygons = mask_to_polygons(msk)
         x_max = GS.loc[GS['ImageId'] == id, 'Xmax'].as_matrix()[0]
         y_min = GS.loc[GS['ImageId'] == id, 'Ymin'].as_matrix()[0]
@@ -439,12 +439,12 @@ def make_submit():
         df.iloc[idx, 2] = shapely.wkt.dumps(scaled_pred_polygons)
         if idx % 100 == 0: print idx
     print df.head()
-    df.to_csv('subm/1.csv', index=False)
+    df.to_csv('/data/dataset/subm/1.csv', index=False)
 
 
 def check_predict(id='6120_2_3'):
     model = get_unet()
-    model.load_weights('weights/unet_10_jk0.7878')
+    model.load_weights('/data/dataset/weights/unet_10_jk0.7878')
 
     msk = predict_id(id, model, [0.4, 0.1, 0.4, 0.3, 0.3, 0.5, 0.3, 0.6, 0.1, 0.1])
     img = M(id)
