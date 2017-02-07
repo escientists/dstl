@@ -1,0 +1,7 @@
+pandas
+shapely 
+opencv 
+matplotlib 
+keras 
+tifffile
+scikit-learn
